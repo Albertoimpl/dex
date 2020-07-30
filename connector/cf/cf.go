@@ -112,7 +112,7 @@ func (c *Config) Open(id string, logger log.Logger) (connector.Connector, error)
 	var apiResult map[string]interface{}
 	json.NewDecoder(apiResp.Body).Decode(&apiResult)
 
-	uaaURL := strings.TrimRight(apiResult["authorization_endpoint"].(string), "/")
+	uaaURL := strings.TrimRight(apiResult["token_endpoint"].(string), "/")
 	uaaResp, err := cfConn.httpClient.Get(fmt.Sprintf("%s/.well-known/openid-configuration", uaaURL))
 
 	if err != nil {
@@ -185,9 +185,12 @@ func (c *cfConnector) LoginURL(scopes connector.Scopes, callbackURL, state strin
 	oauth2Config := &oauth2.Config{
 		ClientID:     c.clientID,
 		ClientSecret: c.clientSecret,
-		Endpoint:     oauth2.Endpoint{TokenURL: c.tokenURL, AuthURL: c.authorizationURL},
-		RedirectURL:  c.redirectURI,
-		Scopes:       []string{"openid", "cloud_controller.read"},
+		Endpoint: oauth2.Endpoint{
+			TokenURL: strings.ReplaceAll(c.tokenURL, "http://", "https://"),
+			AuthURL:  strings.ReplaceAll(c.authorizationURL, "http://", "https://"),
+		},
+		RedirectURL: c.redirectURI,
+		Scopes:      []string{"openid", "cloud_controller.read"},
 	}
 
 	return oauth2Config.AuthCodeURL(state), nil
@@ -314,7 +317,10 @@ func (c *cfConnector) HandleCallback(s connector.Scopes, r *http.Request) (ident
 	oauth2Config := &oauth2.Config{
 		ClientID:     c.clientID,
 		ClientSecret: c.clientSecret,
-		Endpoint:     oauth2.Endpoint{TokenURL: c.tokenURL, AuthURL: c.authorizationURL},
+		Endpoint: oauth2.Endpoint{
+			TokenURL: strings.ReplaceAll(c.tokenURL, "http://", "https://"),
+			AuthURL:  strings.ReplaceAll(c.authorizationURL, "http://", "https://"),
+		},
 		RedirectURL:  c.redirectURI,
 		Scopes:       []string{"openid", "cloud_controller.read"},
 	}
